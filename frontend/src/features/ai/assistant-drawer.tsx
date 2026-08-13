@@ -29,44 +29,84 @@ const LIVE_DATA_TOOLS = new Set([
   "get_recent_activity",
 ]);
 
-/** Render a deliberately small, safe Markdown subset for assistant text. */
+/** Render a simple, safe Markdown subset for assistant text. */
 function AssistantMarkdown({ content }: { content: string }) {
   const blocks: ReactNode[] = [];
   const lines = content.split(/\r?\n/);
   let index = 0;
 
   while (index < lines.length) {
-    if (!lines[index].trim()) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
       index += 1;
       continue;
     }
 
-    const ordered = /^\d+\.\s+(.+)$/.exec(lines[index]);
-    const unordered = /^[-*]\s+(.+)$/.exec(lines[index]);
-    if (ordered || unordered) {
-      const isOrdered = Boolean(ordered);
+    // Heading (e.g. # Heading, ## Heading, ### Heading)
+    const headingMatch = /^(#{1,6})\s+(.+)$/.exec(trimmed);
+    if (headingMatch) {
+      blocks.push(
+        <p key={`h-${index}`} className="mt-2 mb-1 font-semibold text-foreground">
+          {renderInlineMarkdown(headingMatch[2])}
+        </p>
+      );
+      index += 1;
+      continue;
+    }
+
+    // List item (e.g. 1. Item or - Item or * Item)
+    const orderedMatch = /^\d+\.\s+(.+)$/.exec(trimmed);
+    const unorderedMatch = /^[-*]\s+(.+)$/.exec(trimmed);
+    if (orderedMatch || unorderedMatch) {
+      const isOrdered = Boolean(orderedMatch);
       const items: string[] = [];
       while (index < lines.length) {
-        const match = (isOrdered ? /^\d+\.\s+(.+)$/ : /^[-*]\s+(.+)$/).exec(lines[index]);
+        const itemLine = lines[index].trim();
+        const match = (isOrdered ? /^\d+\.\s+(.+)$/ : /^[-*]\s+(.+)$/).exec(itemLine);
         if (!match) break;
         items.push(match[1]);
         index += 1;
       }
-      const List = isOrdered ? "ol" : "ul";
-      blocks.push(<List key={`list-${index}`} className={isOrdered ? "my-2 list-decimal space-y-1 pl-5" : "my-2 list-disc space-y-1 pl-5"}>{items.map((item, itemIndex) => <li key={itemIndex}>{renderInlineMarkdown(item)}</li>)}</List>);
+      const ListTag = isOrdered ? "ol" : "ul";
+      blocks.push(
+        <ListTag key={`list-${index}`} className={isOrdered ? "my-1.5 list-decimal space-y-1 pl-4" : "my-1.5 list-disc space-y-1 pl-4"}>
+          {items.map((item, itemIdx) => (
+            <li key={itemIdx}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ListTag>
+      );
       continue;
     }
 
-    const paragraph: string[] = [];
-    while (index < lines.length && lines[index].trim() && !/^\d+\.\s+/.test(lines[index]) && !/^[-*]\s+/.test(lines[index])) {
-      paragraph.push(lines[index]);
+    // Paragraph
+    const paragraphLines: string[] = [];
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !/^(#{1,6})\s+/.test(lines[index].trim()) &&
+      !/^\d+\.\s+/.test(lines[index].trim()) &&
+      !/^[-*]\s+/.test(lines[index].trim())
+    ) {
+      paragraphLines.push(lines[index]);
       index += 1;
     }
-    blocks.push(<p key={`paragraph-${index}`} className="mb-2 last:mb-0">{paragraph.map((line, lineIndex) => <Fragment key={lineIndex}>{lineIndex > 0 && <br />}{renderInlineMarkdown(line)}</Fragment>)}</p>);
+    blocks.push(
+      <p key={`p-${index}`} className="my-1 leading-relaxed">
+        {paragraphLines.map((l, lIdx) => (
+          <Fragment key={lIdx}>
+            {lIdx > 0 && <br />}
+            {renderInlineMarkdown(l)}
+          </Fragment>
+        ))}
+      </p>
+    );
   }
 
-  return <>{blocks}</>;
+  return <div className="space-y-1 text-sm">{blocks}</div>;
 }
+
 
 /** Render escaped inline bold spans from a trusted text-only assistant response. */
 function renderInlineMarkdown(value: string): ReactNode[] {
