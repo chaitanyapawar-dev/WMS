@@ -35,3 +35,6 @@ vector_store/
 .DS_Store
 .idea/
 .vscode/
+
+# Agent/tooling metadata
+.codex/

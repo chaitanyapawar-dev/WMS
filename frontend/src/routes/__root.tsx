@@ -82,19 +82,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Whitfield Fulfillment — Warehouse Management System" },
       { name: "description", content: "Role-aware warehouse management for multi-seller fulfillment across Reno and Columbus." },
-      { name: "author", content: "Lovable" },
+      { name: "author", content: "Whitfield Fulfillment" },
       { property: "og:title", content: "Whitfield Fulfillment WMS" },
       { property: "og:description", content: "Operations, without the spreadsheet chaos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
