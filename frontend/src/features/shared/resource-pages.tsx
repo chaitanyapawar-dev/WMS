@@ -19,6 +19,7 @@ import type { ReceivingVoicePreview } from "@/lib/api/voice";
 import { ROLE_LABELS } from "@/lib/constants/navigation";
 import { formatDateTime, formatNumber, humanize } from "@/lib/utils/format";
 import { useWarehouseScope } from "@/lib/warehouse-scope";
+import { useAuth } from "@/lib/auth/auth-context";
 import type { Role } from "@/types";
 
 function Surface({ children }: { children: React.ReactNode }) {
@@ -365,11 +366,13 @@ export function ReceiptDetailPage() {
 /* ---------------------------------- Inventory --------------------------------- */
 
 export function InventoryPage() {
+  const { hasRole } = useAuth();
   const { warehouseFilter } = useWarehouseScope();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [adjust, setAdjust] = useState({ quantity: "0", reason: "" });
+  const canAdjustInventory = hasRole(["OWNER", "MANAGER"]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["inventory", { warehouse_id: warehouseFilter }],
@@ -432,12 +435,14 @@ export function InventoryPage() {
                     <TableCell className="num text-right text-success">{formatNumber(i.available)}</TableCell>
                     <TableCell className="num text-right text-destructive">{formatNumber(i.damaged)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setAdjusting(adjusting === i.id ? null : i.id)}>
-                        Adjust
-                      </Button>
+                      {canAdjustInventory ? (
+                        <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setAdjusting(adjusting === i.id ? null : i.id)}>
+                          Adjust
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
-                  {adjusting === i.id && (
+                  {canAdjustInventory && adjusting === i.id && (
                     <TableRow>
                       <TableCell colSpan={8}>
                         <form
@@ -1046,17 +1051,25 @@ export function AuditPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Action</TableHead><TableHead>Entity</TableHead><TableHead>User</TableHead><TableHead>Warehouse</TableHead><TableHead>When</TableHead>
+                <TableHead>Activity</TableHead><TableHead>Actor</TableHead><TableHead>Context</TableHead><TableHead className="text-right">When</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(data ?? []).map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell className="font-medium">{humanize(log.action)}</TableCell>
-                  <TableCell className="num text-muted-foreground">{log.entity_reference}</TableCell>
-                  <TableCell>{log.user_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{log.warehouse_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDateTime(log.created_at)}</TableCell>
+                  <TableCell className="min-w-[190px]">
+                    <p className="font-medium">{humanize(log.action)}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{humanize(log.entity)}</p>
+                  </TableCell>
+                  <TableCell className="min-w-[150px]">
+                    <p className="font-medium">{log.user_name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{ROLE_LABELS[log.role]}</p>
+                  </TableCell>
+                  <TableCell className="min-w-[220px]">
+                    <p className="num text-sm text-foreground">{log.entity_reference}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{log.warehouse_name}</p>
+                  </TableCell>
+                  <TableCell className="min-w-[170px] text-right text-sm text-muted-foreground">{formatDateTime(log.created_at)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -216,7 +216,7 @@ async def seed_demo_user_accounts():
     """
     Seed local demonstration accounts with valid bcrypt password hashes.
 
-    The four fixed `@whitfield.com` demo identities are development fixtures
+    The seven fixed `@whitfield.com` demo identities are development fixtures
     used by the frontend quick-login panel. Existing matching demo accounts are
     updated for role, active status, warehouse scope, and demo password hash so
     stale tutorial hashes cannot break login.
@@ -238,7 +238,9 @@ async def seed_demo_user_accounts():
         warehouses_collection = db["warehouses"]
         now = datetime.now(timezone.utc)
         reno = await warehouses_collection.find_one({"code": "RNO"})
+        columbus = await warehouses_collection.find_one({"code": "CMH"})
         reno_scope = [reno["_id"]] if reno else []
+        columbus_scope = [columbus["_id"]] if columbus else []
         demo_password_hash = encrypt_password("whitfield")
         demo_users = [
             {
@@ -249,25 +251,46 @@ async def seed_demo_user_accounts():
                 "warehouse_ids": [],
             },
             {
-                "first_name": "Whitfield",
+                "first_name": "Reno",
                 "last_name": "Manager",
-                "email": "manager@whitfield.com",
+                "email": "manager.reno@whitfield.com",
                 "role": "MANAGER",
                 "warehouse_ids": reno_scope,
             },
             {
-                "first_name": "Receiving",
-                "last_name": "Staff",
-                "email": "receiving@whitfield.com",
+                "first_name": "Columbus",
+                "last_name": "Manager",
+                "email": "manager.columbus@whitfield.com",
+                "role": "MANAGER",
+                "warehouse_ids": columbus_scope,
+            },
+            {
+                "first_name": "Reno",
+                "last_name": "Receiving",
+                "email": "receiving.reno@whitfield.com",
                 "role": "RECEIVING_STAFF",
                 "warehouse_ids": reno_scope,
             },
             {
-                "first_name": "Fulfillment",
-                "last_name": "Staff",
-                "email": "fulfillment@whitfield.com",
+                "first_name": "Columbus",
+                "last_name": "Receiving",
+                "email": "receiving.columbus@whitfield.com",
+                "role": "RECEIVING_STAFF",
+                "warehouse_ids": columbus_scope,
+            },
+            {
+                "first_name": "Reno",
+                "last_name": "Fulfillment",
+                "email": "fulfillment.reno@whitfield.com",
                 "role": "FULFILLMENT_STAFF",
                 "warehouse_ids": reno_scope,
+            },
+            {
+                "first_name": "Columbus",
+                "last_name": "Fulfillment",
+                "email": "fulfillment.columbus@whitfield.com",
+                "role": "FULFILLMENT_STAFF",
+                "warehouse_ids": columbus_scope,
             },
         ]
 

@@ -1,3 +1,4 @@
+import { Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BrandMark({ className }: { className?: string }) {
@@ -9,7 +10,7 @@ export function BrandMark({ className }: { className?: string }) {
       )}
       aria-hidden
     >
-      W
+      <Warehouse className="size-[19px]" strokeWidth={2.25} />
     </span>
   );
 }

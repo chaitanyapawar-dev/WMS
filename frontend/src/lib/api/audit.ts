@@ -1,6 +1,7 @@
 import type { AuditLog } from "@/types";
 import { http } from "./client";
 import { type BackendAuditLog, cleanParams, nameMap, toAuditLog } from "./adapters";
+import { list as listUsers } from "./users";
 import { list as listWarehouses } from "./warehouses";
 
 export interface AuditFilters {
@@ -34,6 +35,14 @@ async function liveAuditLogs(filters: AuditFilters): Promise<AuditLog[]> {
     entity_type: filters.entity,
     warehouse_id: filters.warehouse_id,
   });
-  const [logs, warehouses] = await Promise.all([http.get<BackendAuditLog[]>("/audit-logs", { params }), listWarehouses()]);
-  return logs.data.map((log) => toAuditLog(log, nameMap(warehouses)));
+  const [logs, warehouses, users] = await Promise.all([
+    http.get<BackendAuditLog[]>("/audit-logs", { params }),
+    listWarehouses(),
+    listUsers().catch(() => []),
+  ]);
+  const userNames = new Map(users.map((user) => [user.id, `${user.first_name} ${user.last_name}`]));
+  return logs.data.map((log) => ({
+    ...toAuditLog(log, nameMap(warehouses)),
+    user_name: userNames.get(log.user_id) ?? "System user",
+  }));
 }

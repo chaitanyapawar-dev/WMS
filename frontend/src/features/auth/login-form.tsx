@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -152,7 +152,9 @@ export function LoginForm() {
                     {account.label}
                   </span>
                   <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">
-                    {account.description}
+                    {account.warehouse ? (
+                      <span className="inline-flex items-center gap-1"><MapPin className="size-3" aria-hidden />{account.warehouse} Warehouse</span>
+                    ) : account.description}
                   </span>
                 </span>
                 {selected ? <Check className="size-4 text-primary" aria-hidden /> : null}

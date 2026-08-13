@@ -9,7 +9,6 @@ import {
   Store,
   Truck,
   Users,
-  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "@/types";
@@ -58,10 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "System",
-    items: [
-      { label: "Warehouses", to: "/warehouses", icon: Warehouse, roles: ["OWNER", "MANAGER"] },
-      { label: "Settings", to: "/settings", icon: Settings, roles: ALL },
-    ],
+    items: [{ label: "Settings", to: "/settings", icon: Settings, roles: ALL }],
   },
 ];
 
