@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
@@ -14,6 +16,7 @@ from core.apis.routes.receipt_router import receipt_router
 from core.apis.routes.seller_router import seller_router
 from core.apis.routes.user_router import user_router
 from core.apis.routes.warehouse_router import warehouse_router
+from core.apis.routes.voice_router import voice_router
 from core.database.database import close_mongo_connection, connect_to_mongo
 from commons.auth import validate_jwt_configuration
 from core import logger
@@ -59,6 +62,29 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(RequestValidationError)
+async def log_request_validation_error(request: Request, error: RequestValidationError) -> Response:
+    """Log safe metadata when a request is rejected before reaching a route handler.
+
+    Args:
+        request: Incoming request rejected by FastAPI validation.
+        error: Validation details supplied by FastAPI.
+
+    Returns:
+        Response: FastAPI's standard validation response without request-body logging.
+    """
+    if request.url.path == "/v1/voice/interpret":
+        invalid_fields = [
+            ".".join(str(part) for part in issue.get("loc", ()))
+            for issue in error.errors()
+        ]
+        logging.warning(
+            "Voice request validation rejected before route execution "
+            f"method={request.method} fields={invalid_fields}"
+        )
+    return await request_validation_exception_handler(request, error)
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     """
@@ -84,7 +110,7 @@ async def add_security_headers(request, call_next):
     response.headers["Strict-Transport-Security"] = (
         "max-age=31536000; includeSubDomains"
     )
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self)"
     response.headers["Cache-Control"] = "no-store"
     response.headers["Server"] = "Custom Server"
 
@@ -152,6 +178,7 @@ app.include_router(inventory_router, tags=["Inventory"])
 app.include_router(audit_router, tags=["Audit Logs"])
 app.include_router(order_router, tags=["Fulfillment"])
 app.include_router(ai_router, tags=["AI Assistant"])
+app.include_router(voice_router, tags=["Receiving Voice"])
 
 
 @app.get("/")

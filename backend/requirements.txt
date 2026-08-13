@@ -86,3 +86,7 @@ google-genai==2.6.0
 # Main usage: core/services/ai/rag/ for approved warehouse SOP retrieval.
 sentence-transformers==3.4.1
 chromadb==0.6.3
+
+# Secure programmable WMS client (Phase 10)
+typer==0.27.1
+httpx==0.28.1

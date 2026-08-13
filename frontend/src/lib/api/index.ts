@@ -14,3 +14,4 @@ export * as ordersApi from "./orders";
 export * as auditApi from "./audit";
 export * as usersApi from "./users";
 export * as aiApi from "./ai";
+export * as voiceApi from "./voice";

@@ -36,9 +36,10 @@ function AssistantMarkdown({ content }: { content: string }) {
   let index = 0;
 
   while (index < lines.length) {
-    const line = lines[index];
-    const trimmed = line.trim();
+    const currentLine = lines[index];
+    if (currentLine === undefined) break;
 
+    const trimmed = currentLine.trim();
     if (!trimmed) {
       index += 1;
       continue;
@@ -46,7 +47,7 @@ function AssistantMarkdown({ content }: { content: string }) {
 
     // Heading (e.g. # Heading, ## Heading, ### Heading)
     const headingMatch = /^(#{1,6})\s+(.+)$/.exec(trimmed);
-    if (headingMatch) {
+    if (headingMatch && headingMatch[2]) {
       blocks.push(
         <p key={`h-${index}`} className="mt-2 mb-1 font-semibold text-foreground">
           {renderInlineMarkdown(headingMatch[2])}
@@ -63,9 +64,11 @@ function AssistantMarkdown({ content }: { content: string }) {
       const isOrdered = Boolean(orderedMatch);
       const items: string[] = [];
       while (index < lines.length) {
-        const itemLine = lines[index].trim();
+        const nextLine = lines[index];
+        if (!nextLine) break;
+        const itemLine = nextLine.trim();
         const match = (isOrdered ? /^\d+\.\s+(.+)$/ : /^[-*]\s+(.+)$/).exec(itemLine);
-        if (!match) break;
+        if (!match || !match[1]) break;
         items.push(match[1]);
         index += 1;
       }
@@ -82,26 +85,28 @@ function AssistantMarkdown({ content }: { content: string }) {
 
     // Paragraph
     const paragraphLines: string[] = [];
-    while (
-      index < lines.length &&
-      lines[index].trim() &&
-      !/^(#{1,6})\s+/.test(lines[index].trim()) &&
-      !/^\d+\.\s+/.test(lines[index].trim()) &&
-      !/^[-*]\s+/.test(lines[index].trim())
-    ) {
-      paragraphLines.push(lines[index]);
+    while (index < lines.length) {
+      const pLine = lines[index];
+      if (!pLine) break;
+      const pTrimmed = pLine.trim();
+      if (!pTrimmed || /^(#{1,6})\s+/.test(pTrimmed) || /^\d+\.\s+/.test(pTrimmed) || /^[-*]\s+/.test(pTrimmed)) {
+        break;
+      }
+      paragraphLines.push(pLine);
       index += 1;
     }
-    blocks.push(
-      <p key={`p-${index}`} className="my-1 leading-relaxed">
-        {paragraphLines.map((l, lIdx) => (
-          <Fragment key={lIdx}>
-            {lIdx > 0 && <br />}
-            {renderInlineMarkdown(l)}
-          </Fragment>
-        ))}
-      </p>
-    );
+    if (paragraphLines.length > 0) {
+      blocks.push(
+        <p key={`p-${index}`} className="my-1 leading-relaxed">
+          {paragraphLines.map((l, lIdx) => (
+            <Fragment key={lIdx}>
+              {lIdx > 0 && <br />}
+              {renderInlineMarkdown(l)}
+            </Fragment>
+          ))}
+        </p>
+      );
+    }
   }
 
   return <div className="space-y-1 text-sm">{blocks}</div>;
@@ -134,7 +139,14 @@ export function AssistantDrawer() {
   const suggestions = useMemo(() => (user ? SUGGESTIONS[user.role] : []), [user]);
 
   const chat = useMutation({
-    mutationFn: (question: string) => aiApi.chat({ message: question, active_warehouse_id: scopeId === "ALL" ? undefined : scopeId }),
+    mutationFn: (question: string) => {
+      const payload: { message: string; active_warehouse_id?: string } = { message: question };
+      if (scopeId && scopeId !== "ALL") {
+        payload.active_warehouse_id = scopeId;
+      }
+      return aiApi.chat(payload);
+    },
+
     onSuccess: (response, question) => {
       setConversation((items) => [...items, { question, answer: response.answer, tools: response.tool_calls, sources: response.sources }]);
       setMessage("");

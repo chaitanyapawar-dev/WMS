@@ -71,6 +71,19 @@ export function normalizeError(error: unknown): NormalizedError {
         return { status, message: "You don't have access to this warehouse." };
       }
     }
+    if (url.includes("/voice/interpret")) {
+      const detail = axiosError.response?.data?.detail;
+      const detailText = typeof detail === "string" ? detail : "";
+      if (status === 400 && detailText.includes("does not belong to the receipt")) {
+        return { status, message: "This product belongs to a different seller and cannot be received on this receipt." };
+      }
+      if (status === 400 || status === 422) {
+        return { status, message: detailText || "I couldn't process that recording. Please try again or enter the quantities manually." };
+      }
+      if (status === 503) {
+        return { status, message: detailText || "Voice services are temporarily unavailable. Please enter the quantities manually." };
+      }
+    }
     if (status === 403) return { status, message: "You don't have permission to perform this action." };
     const detail = axiosError.response?.data?.detail;
     if (Array.isArray(detail)) {

@@ -2,9 +2,13 @@
 
 import os
 
+from dotenv import load_dotenv
+
 from core import logger
 
 logging = logger(__name__)
+
+load_dotenv()
 
 
 class GeminiConfigurationError(RuntimeError):

@@ -9,11 +9,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ReceivingVoiceEntry } from "@/features/receiving/receiving-voice-entry";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { auditApi, inventoryApi, ordersApi, productsApi, receiptsApi, sellersApi, usersApi, warehousesApi } from "@/lib/api";
 import { errorMessage } from "@/lib/api/client";
+import type { ReceivingVoicePreview } from "@/lib/api/voice";
 import { ROLE_LABELS } from "@/lib/constants/navigation";
 import { formatDateTime, formatNumber, humanize } from "@/lib/utils/format";
 import { useWarehouseScope } from "@/lib/warehouse-scope";
@@ -187,6 +189,7 @@ export function ReceiptDetailPage() {
   const { receiptId } = useParams({ from: "/_shell/receiving/$receiptId" });
   const queryClient = useQueryClient();
   const [scan, setScan] = useState({ upc: "", good_quantity: "1", damaged_quantity: "0" });
+  const [voicePreview, setVoicePreview] = useState<ReceivingVoicePreview | null>(null);
 
   const { data: receipt, isLoading } = useQuery({ queryKey: ["receipt", receiptId], queryFn: () => receiptsApi.get(receiptId) });
 
@@ -198,15 +201,16 @@ export function ReceiptDetailPage() {
   };
 
   const addItem = useMutation({
-    mutationFn: () =>
+    mutationFn: (payload: { product_id: string; good_quantity: number; damaged_quantity: number }) =>
       receiptsApi.addItem(receiptId, {
-        product_id: scan.upc.trim(),
-        good_quantity: Number(scan.good_quantity) || 0,
-        damaged_quantity: Number(scan.damaged_quantity) || 0,
+        product_id: payload.product_id,
+        good_quantity: payload.good_quantity,
+        damaged_quantity: payload.damaged_quantity,
       }),
     onSuccess: () => {
       toast.success("Item scanned in");
       setScan({ upc: "", good_quantity: "1", damaged_quantity: "0" });
+      setVoicePreview(null);
       invalidate();
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -222,7 +226,20 @@ export function ReceiptDetailPage() {
       toast.error(quantityError);
       return;
     }
-    addItem.mutate();
+    addItem.mutate({
+      product_id: scan.upc.trim(),
+      good_quantity: Number(scan.good_quantity) || 0,
+      damaged_quantity: Number(scan.damaged_quantity) || 0,
+    });
+  };
+
+  const confirmVoicePreview = () => {
+    if (!voicePreview || voicePreview.intent.good_qty === null || voicePreview.intent.damaged_qty === null) return;
+    addItem.mutate({
+      product_id: voicePreview.context.upc,
+      good_quantity: voicePreview.intent.good_qty,
+      damaged_quantity: voicePreview.intent.damaged_qty,
+    });
   };
 
   const complete = useMutation({
@@ -279,6 +296,37 @@ export function ReceiptDetailPage() {
             <Input id="damaged" type="number" min="0" step="1" value={scan.damaged_quantity} onChange={(e) => setScan({ ...scan, damaged_quantity: e.target.value })} className="num h-11 rounded-xl" />
           </div>
           <Button type="submit" disabled={addItem.isPending} className="h-11 rounded-xl">Add item</Button>
+          <div className="sm:col-span-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3">
+            <ReceivingVoiceEntry receiptId={receiptId} upc={scan.upc} onPreview={setVoicePreview} />
+            <span className="text-xs text-muted-foreground">Speak short quantities, then review before confirming.</span>
+          </div>
+          {voicePreview && (
+            <div className="sm:col-span-4 grid gap-3 border-t border-border/70 pt-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Voice transcript</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{voicePreview.context.product_name} · UPC {voicePreview.context.upc}</p>
+                </div>
+                <p className="max-w-md text-sm text-muted-foreground">I heard: “{voicePreview.transcript}”</p>
+              </div>
+              {voicePreview.requires_confirmation ? (
+                <>
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    <span className="rounded-md bg-emerald-500/10 px-3 py-1.5 text-emerald-700 dark:text-emerald-300">Good: {voicePreview.intent.good_qty}</span>
+                    <span className="rounded-md bg-amber-500/10 px-3 py-1.5 text-amber-700 dark:text-amber-300">Damaged: {voicePreview.intent.damaged_qty}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setVoicePreview(null)} className="rounded-lg">Cancel</Button>
+                    <Button type="button" onClick={confirmVoicePreview} disabled={addItem.isPending} className="rounded-lg">Confirm item</Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {voicePreview.message || "Enter the quantities manually, then add the item."}
+                </p>
+              )}
+            </div>
+          )}
         </form>
       )}
 
