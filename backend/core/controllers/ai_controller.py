@@ -40,8 +40,8 @@ class AIController:
         """
         try:
             logging.info(f"Executing AIController.chat request={request_id} user={current_user.id}")
-            answer, tool_calls = await self.service.answer(request.message, ToolContext(current_user=current_user, request_id=request_id))
-            return AIChatResponse(answer=answer, tool_calls=tool_calls, request_id=request_id)
+            answer, tool_calls, sources = await self.service.answer(request.message, ToolContext(current_user=current_user, request_id=request_id))
+            return AIChatResponse(answer=answer, tool_calls=tool_calls, sources=sources, request_id=request_id)
         except AIProviderUnavailableError as error:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
         except HTTPException:

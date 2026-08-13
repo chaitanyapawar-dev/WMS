@@ -355,26 +355,26 @@ Do not skip dependencies.
 | ID | Task | Status |
 |---|---|---|
 | P8-T01 | Phase 8 discovery and architecture audit | COMPLETED |
-| P8-T02 | Gemini configuration and provider setup | BLOCKED |
+| P8-T02 | Gemini configuration and provider setup | COMPLETED |
 | P8-T03 | AI request/response schemas | COMPLETED |
-| P8-T04 | AI tool framework and registry | BLOCKED |
-| P8-T05 | Inventory lookup tool | BLOCKED |
-| P8-T06 | Product / UPC lookup tool | BLOCKED |
-| P8-T07 | Receipt lookup tool | BLOCKED |
-| P8-T08 | Order / fulfillment lookup tool | BLOCKED |
-| P8-T09 | Warehouse operational summary tool | BLOCKED |
-| P8-T10 | Recent activity / audit tool | BLOCKED |
-| P8-T11 | RBAC and warehouse-scope enforcement | NOT STARTED |
-| P8-T12 | Gemini tool-calling orchestration | BLOCKED |
-| P8-T13 | `/v1/ai/chat` endpoint | BLOCKED |
-| P8-T14 | AI error handling and provider failure behavior | BLOCKED |
-| P8-T15 | Prompt/injection safety | NOT STARTED |
-| P8-T16 | Backend AI tests | NOT STARTED |
-| P8-T17 | Frontend AI API client | BLOCKED |
-| P8-T18 | Whitfield AI chat drawer UI | BLOCKED |
-| P8-T19 | Role-aware suggested prompts | BLOCKED |
-| P8-T20 | Browser E2E AI verification | NOT STARTED |
-| P8-T21 | Security and WMS regression verification | NOT STARTED |
+| P8-T04 | AI tool framework and registry | COMPLETED |
+| P8-T05 | Inventory lookup tool | COMPLETED |
+| P8-T06 | Product / UPC lookup tool | COMPLETED |
+| P8-T07 | Receipt lookup tool | COMPLETED |
+| P8-T08 | Order / fulfillment lookup tool | COMPLETED |
+| P8-T09 | Warehouse operational summary tool | COMPLETED |
+| P8-T10 | Recent activity / audit tool | COMPLETED |
+| P8-T11 | RBAC and warehouse-scope enforcement | COMPLETED |
+| P8-T12 | Gemini tool-calling orchestration | PARTIAL — LIVE RETEST PENDING |
+| P8-T13 | `/v1/ai/chat` endpoint | PARTIAL — LIVE RETEST PENDING |
+| P8-T14 | AI error handling and provider failure behavior | COMPLETED |
+| P8-T15 | Prompt/injection safety | PARTIAL — STRUCTURAL PASS |
+| P8-T16 | Backend AI tests | PARTIAL — LIVE RETEST PENDING |
+| P8-T17 | Frontend AI API client | COMPLETED |
+| P8-T18 | Whitfield AI chat drawer UI | COMPLETED |
+| P8-T19 | Role-aware suggested prompts | COMPLETED |
+| P8-T20 | Browser E2E AI verification | NOT VERIFIED — MANUAL RETEST PENDING |
+| P8-T21 | Security and WMS regression verification | COMPLETED |
 | P8-T22 | Phase 8 final report and freeze | NOT STARTED |
 
 ---
@@ -453,7 +453,7 @@ Frontend integration point:
 
 ## P8-T02 — Gemini Configuration and Provider Setup
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T01
 
 ### Description
@@ -484,8 +484,12 @@ Gemini calls must happen on the backend, never directly from browser JavaScript.
 
 ```text
 Gemini client initialization: PASS
+Gemini SDK import in the serving project venv: PASS
+GEMINI_API_KEY detected: YES (value not logged or exposed)
+Model configuration: PASS (configured default: gemini-3.6-flash)
 Minimal provider response: PASS
 Secret exposure: NO
+Safe WMS behavior while provider unavailable: PASS
 ```
 
 ---
@@ -538,7 +542,7 @@ Suggested response shape:
 
 ## P8-T04 — AI Tool Framework and Registry
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T02, P8-T03
 
 ### Description
@@ -588,7 +592,7 @@ get_recent_activity
 
 ## P8-T05 — Inventory Lookup Tool
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T04
 
 ### Description
@@ -652,7 +656,7 @@ Compare tool result with live inventory API. Values must match.
 
 ## P8-T06 — Product / UPC Lookup Tool
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T04
 
 ### Description
@@ -693,7 +697,7 @@ status
 
 ## P8-T07 — Receipt Lookup Tool
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T04
 
 ### Description
@@ -743,7 +747,7 @@ FULFILLMENT_STAFF → follow existing WMS read policy
 
 ## P8-T08 — Order / Fulfillment Lookup Tool
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T04
 
 ### Description
@@ -789,7 +793,7 @@ CANCELLED
 
 ## P8-T09 — Warehouse Operational Summary Tool
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T05, P8-T07, P8-T08
 
 ### Description
@@ -836,7 +840,7 @@ ready_to_ship
 
 ## P8-T10 — Recent Activity / Audit Tool
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T04
 
 ### Description
@@ -874,7 +878,7 @@ Only roles already authorized to read audit-level information may receive it.
 
 ## P8-T11 — RBAC and Warehouse-Scope Enforcement
 
-**Status:** NOT STARTED  
+**Status:** COMPLETED  
 **Depends On:** P8-T05, P8-T06, P8-T07, P8-T08, P8-T09, P8-T10
 
 ### Description
@@ -934,7 +938,7 @@ privileged audit → DENIED when normally unauthorized
 
 ## P8-T12 — Gemini Tool-Calling Orchestration
 
-**Status:** BLOCKED  
+**Status:** PARTIAL — LIVE RETEST PENDING  
 **Depends On:** P8-T11
 
 ### Description
@@ -980,11 +984,21 @@ Gemini should be told:
 - Infinite loops prevented.
 - Tool failures handled safely.
 
+### Verification Update
+
+```text
+- Real inventory question: PASS. Gemini selected get_inventory and returned the current Widget A/Reno availability.
+- Real product question: PASS. Gemini selected lookup_product and returned Widget A, SKU WIDGET-A, and Acme Corp details.
+- Real ready-to-ship order question: PASS. Gemini selected list_orders.
+- Receipt, operational-summary, and recent-activity real prompts are temporarily blocked by Gemini free-tier 429 RESOURCE_EXHAUSTED quota responses. The backend returns the safe generic 503 response and logs the provider category server-side.
+- Maximum tool rounds remain fixed at 3. Tool errors are converted to safe structured results.
+```
+
 ---
 
 ## P8-T13 — `/v1/ai/chat` Endpoint
 
-**Status:** BLOCKED  
+**Status:** PARTIAL — LIVE RETEST PENDING  
 **Depends On:** P8-T12
 
 ### Description
@@ -1028,7 +1042,7 @@ Response should be typed, for example:
 
 ## P8-T14 — AI Error Handling and Provider Failure Behavior
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T13
 
 ### Description
@@ -1065,7 +1079,7 @@ User-facing examples:
 
 ## P8-T15 — Prompt and Injection Safety
 
-**Status:** NOT STARTED  
+**Status:** PARTIAL — STRUCTURAL PASS  
 **Depends On:** P8-T12, P8-T14
 
 ### Description
@@ -1096,7 +1110,7 @@ Backend restrictions, not prompt wording alone, must enforce security.
 
 ## P8-T16 — Backend AI Tests
 
-**Status:** NOT STARTED  
+**Status:** PARTIAL — LIVE RETEST PENDING  
 **Depends On:** P8-T13, P8-T14, P8-T15
 
 ### Description
@@ -1132,7 +1146,7 @@ Keep deterministic tool authorization tests independent from real Gemini where p
 
 ## P8-T17 — Frontend AI API Client
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T13
 
 ### Description
@@ -1162,7 +1176,7 @@ Do not call Gemini directly from frontend.
 
 ## P8-T18 — Whitfield AI Chat Drawer UI
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T17
 
 ### Description
@@ -1235,7 +1249,7 @@ AI unavailable
 
 ## P8-T19 — Role-Aware Suggested Prompts
 
-**Status:** BLOCKED  
+**Status:** COMPLETED  
 **Depends On:** P8-T18
 
 ### Description
@@ -1289,7 +1303,7 @@ How much Widget A is available?
 
 ## P8-T20 — Browser End-to-End AI Verification
 
-**Status:** NOT STARTED  
+**Status:** NOT VERIFIED — MANUAL RETEST PENDING  
 **Depends On:** P8-T19
 
 ### Description
@@ -1353,7 +1367,7 @@ Expected scoped summary.
 
 ## P8-T21 — Security and WMS Regression Verification
 
-**Status:** NOT STARTED  
+**Status:** COMPLETED  
 **Depends On:** P8-T20
 
 ### AI Security Checklist
@@ -1786,9 +1800,11 @@ Update the Agent Working Memory below.
 ## Current Position
 
 ```text
-Current Task: P8-T02 provider/runtime verification
-Current Status: BLOCKED
-Next Eligible Task: Resume P8-T02 after a usable Python runtime is restored.
+Current Task: P8-T12 Final Live Retest
+Current Status: BLOCKED - Gemini function-calling quota exhausted.
+Goal: Complete Phase 8 final acceptance testing after live provider quota is available.
+Provider State: Minimal Gemini request PASS. The first function-calling endpoint request then received Google 429 RESOURCE_EXHAUSTED. Do not expose or inspect the Gemini key value.
+Next Action: Wait for provider quota availability, then run the remaining minimum live acceptance matrix and the manual browser checklist.
 ```
 
 ## Important Architecture Decisions
@@ -1847,22 +1863,51 @@ Partial Phase 8 implementation:
 - Registry contains only get_inventory, lookup_product, list_receipts, list_orders, get_operational_summary, and get_recent_activity.
 - Added frontend typed API and a Sheet-based topbar assistant with role-aware prompts.
 - frontend npm run build: PASS.
-- Python runtime check: BLOCKED; project venvs reference a deleted Python 3.11 executable.
 - GEMINI_API_KEY configured: YES. Secret value not logged or exposed.
 - Live POST /v1/ai/chat without JWT: HTTP 401 PASS.
 - Live POST /v1/ai/chat with blank message: HTTP 422 PASS.
-- Live POST /v1/ai/chat as OWNER without Gemini configuration: HTTP 503 safe response PASS.
+- Live POST /v1/ai/chat as OWNER with Gemini configured: HTTP 503 safe response PASS while Google denies provider access.
 - P8-T03 schemas: COMPLETED through the live FastAPI validation checks above.
 - GEMINI_API_KEY configured: YES. Secret value not logged or exposed.
-- Active FastAPI server process uses the project venv but its base Python executable is deleted from disk; it cannot be used for package installation or restart.
-- Python installation verification: BLOCKED. Chocolatey requires administrator access and cannot write its system directories; the private official installer fallback could not download because `www.python.org` DNS resolution is unavailable in this environment.
+- Backend restart re-evaluation: PASS. GET /openapi.json returned 200 and authenticated GET /v1/auth/me returned 200.
+- Active FastAPI runtime: D:\WMS\backend\.venv\Scripts\python.exe backed by Python 3.11.
+- Installed backend requirements in the active project venv; google-genai 2.6.0 import: PASS.
+- Historical isolated provider probes before the key update: gemini-2.5-flash -> PROJECT_DENIED_403; gemini-3.6-flash -> PROJECT_DENIED_403. Those results reflected the previous credential/project state.
+- Updated provider default and .env.example model to gemini-3.6-flash. The local GEMINI_MODEL override is absent, so the backend default applies after restart.
+- Changed-key verification: GEMINI_API_KEY is configured without exposing it. A context-managed Gemini request to gemini-3.6-flash returned a real response. The authenticated assistant service completed the Widget A/Reno question with get_inventory and lookup_product tool calls and a non-empty answer.
+- Live endpoint changed-key verification: authenticated POST /v1/ai/chat returned HTTP 200 for the Widget A/Reno question, executed get_inventory, and the final answer included the current 111 available units.
+- Real Gemini routing: inventory, product UPC lookup, and ready-to-ship order questions returned HTTP 200 with expected tools. Other immediate real prompts were safely throttled by Gemini 429 RESOURCE_EXHAUSTED; the API converted these to generic HTTP 503 responses.
+- Controlled error verification: unavailable provider, timeout, and malformed-provider response all produced safe assistant behavior. Unknown tool, missing product, and authorization-denial behavior were verified deterministically through the registry.
+- Core WMS regression API smoke test: authenticated auth/me, warehouses, products, receipts, inventory, orders, audit logs, and users each returned HTTP 200.
+- Browser automation: NOT AVAILABLE in this session; browser E2E remains manual verification required.
+- Quota-independent verification pass: COMPLETED. Direct tool calls used real authenticated database users and trusted ToolContext values; no Gemini request was sent.
+- Full direct-tool checks: Widget A supports product name, SKU, and UPC lookup; invalid UPC returns 404; receipt DRAFT filter and reference lookup pass; all order status filters preserve their requested status; unknown order returns an empty result; owner activity is newest-first and bounded to 10.
+- Fresh Widget A/Reno direct tool truth: on_hand 114, reserved 3, available 111, damaged 17; available equals on_hand minus reserved; structural mutation attempts left all values unchanged.
+- Fresh Reno normal-API and operational-summary-tool truth matches for all metrics: total_on_hand 131, available 128, reserved 3, damaged 20, pending_receipts 9, open_orders 4, orders_to_pick 0, picking 0, ready_to_pack 0, ready_to_ship 0.
+- Exact allowlist and structural safety: six approved read-only tools only. Twelve plausible mutation/arbitrary-database tool names were rejected as unknown. Receiving user attempts to inject role, user_id, or warehouse_ids while requesting Columbus remained denied with 403.
+- Frontend static verification: AI API uses the shared HTTP client and typed contracts; drawer has loading/duplicate-submit protection and role-specific prompts; source/build scan found no Gemini credential or direct Gemini endpoint. Google Fonts URLs are unrelated matches.
+- Final acceptance health: restarted FastAPI returned OpenAPI 200; owner login/auth-me 200; all normal owner WMS routes (warehouses, products, receipts, inventory, orders, audit logs, users) returned 200.
+- Final AI validation: missing JWT 401, invalid JWT 401, blank authenticated request 422. Minimal Gemini provider request succeeded. The first live function-calling endpoint request was safely throttled by Google 429 RESOURCE_EXHAUSTED and returned client-safe 503 without provider internals.
+- Final frontend acceptance build: PASS. Frontend source and generated build output contain no GEMINI_API_KEY, API-key signature, or direct Gemini API endpoint.
+- Browser E2E retest: NOT AVAILABLE. No controllable browser session was available.
+- P8-T04 through P8-T11 deterministic implementation and success-criteria verification: COMPLETED independently of provider availability.
+- Registry allowlist contains exactly get_inventory, lookup_product, list_receipts, list_orders, get_operational_summary, and get_recent_activity. Unknown tools are rejected; no arbitrary database or mutation capability exists.
+- Live API versus get_inventory for Widget A / Reno: on_hand 114, reserved 3, available 111, damaged 17 on both paths.
+- Live API versus get_operational_summary for Reno: total_on_hand 131, available 128, reserved 3, damaged 20, pending_receipts 9, open_orders 4 on both paths; available equals on_hand minus reserved.
+- Receipt DRAFT filter and exact reference lookup passed. ORD-1011 lookup returned SHIPPED; READY_TO_SHIP filtering passed.
+- RBAC/scope deterministic checks passed: OWNER accessed Reno and Columbus; MANAGER Reno activity/receipts; RECEIVING_STAFF Reno inventory/receipts; FULFILLMENT_STAFF Reno orders. Manager, receiving, and fulfillment Columbus requests were denied as applicable. Receiving audit access was denied. Spoofed Gemini-style role and warehouse_ids inputs had no effect.
+- Live AI endpoint checks after restart: missing JWT 401, blank message 422, configured-provider request 503 safe generic response.
+- Backend compile/import and AI route registration: PASS.
+- Frontend AI client/drawer build: PASS. No Gemini configuration or API key reference exists in frontend source.
+- Exact tool allowlist verification: PASS (get_inventory, lookup_product, list_receipts, list_orders, get_operational_summary, get_recent_activity only).
+- Pytest discovery: NOT AVAILABLE. No pytest configuration or test files are present, and pytest is not installed in the active backend venv.
 ```
 
 ## Known Blockers
 
 ```text
-- Project venvs exist but their Python 3.11 base executable is unavailable.
-- No usable Python interpreter is available on disk. Python restoration is blocked by unavailable administrator package installation and DNS failure for the official installer download.
+- Gemini function-calling quota is currently exhausted (429 RESOURCE_EXHAUSTED), preventing the remaining live prompt matrix until the quota is restored or the user changes the key/project.
+- Browser automation is unavailable in this session; P8-T20 requires a manual browser pass.
 ```
 
 ## Known Non-Blocking Backlog
@@ -1877,7 +1922,7 @@ Partial Phase 8 implementation:
 ## Next Action
 
 ```text
-Restore a usable Python 3.11+ runtime, recreate the project backend venv, install pinned requirements, restart FastAPI so backend/.env is reloaded, then run the real P8-T02 provider verification.
+After Gemini quota becomes available, complete the remaining real routing and live security prompts, then perform the manual browser verification.
 ```
 
 ---

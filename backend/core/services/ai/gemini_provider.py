@@ -31,7 +31,7 @@ class GeminiProvider:
         Returns:
             str: Gemini model identifier with a stable development default.
         """
-        return os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        return os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
     def get_client(self):
         """Create a configured Gemini SDK client for one AI request.

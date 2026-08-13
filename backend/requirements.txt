@@ -81,3 +81,8 @@ aiofiles>=0.5.0
 # Gemini AI provider (server-side only)
 # Main usage: core/services/ai/gemini_provider.py
 google-genai==2.6.0
+
+# Local RAG retrieval (server-side only)
+# Main usage: core/services/ai/rag/ for approved warehouse SOP retrieval.
+sentence-transformers==3.4.1
+chromadb==0.6.3

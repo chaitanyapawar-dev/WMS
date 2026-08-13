@@ -9,7 +9,14 @@ export interface AIChatRequest {
 export interface AIChatResponse {
   answer: string;
   tool_calls: string[];
+  sources: AISource[];
   request_id: string;
+}
+
+export interface AISource {
+  title: string;
+  source: string;
+  section: string;
 }
 
 /** POST /v1/ai/chat through the shared authenticated Axios client. */

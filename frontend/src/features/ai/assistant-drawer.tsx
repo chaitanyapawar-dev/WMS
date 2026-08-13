@@ -1,11 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { aiApi } from "@/lib/api";
+import type { AISource } from "@/lib/api/ai";
 import { errorMessage, normalizeError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useWarehouseScope } from "@/lib/warehouse-scope";
@@ -18,10 +20,68 @@ const SUGGESTIONS: Record<Role, string[]> = {
   FULFILLMENT_STAFF: ["Which orders are waiting to be picked?", "Which orders are ready to ship?", "Show order ORD-1011.", "How much Widget A is available?"],
 };
 
+const LIVE_DATA_TOOLS = new Set([
+  "get_inventory",
+  "lookup_product",
+  "list_receipts",
+  "list_orders",
+  "get_operational_summary",
+  "get_recent_activity",
+]);
+
+/** Render a deliberately small, safe Markdown subset for assistant text. */
+function AssistantMarkdown({ content }: { content: string }) {
+  const blocks: ReactNode[] = [];
+  const lines = content.split(/\r?\n/);
+  let index = 0;
+
+  while (index < lines.length) {
+    if (!lines[index].trim()) {
+      index += 1;
+      continue;
+    }
+
+    const ordered = /^\d+\.\s+(.+)$/.exec(lines[index]);
+    const unordered = /^[-*]\s+(.+)$/.exec(lines[index]);
+    if (ordered || unordered) {
+      const isOrdered = Boolean(ordered);
+      const items: string[] = [];
+      while (index < lines.length) {
+        const match = (isOrdered ? /^\d+\.\s+(.+)$/ : /^[-*]\s+(.+)$/).exec(lines[index]);
+        if (!match) break;
+        items.push(match[1]);
+        index += 1;
+      }
+      const List = isOrdered ? "ol" : "ul";
+      blocks.push(<List key={`list-${index}`} className={isOrdered ? "my-2 list-decimal space-y-1 pl-5" : "my-2 list-disc space-y-1 pl-5"}>{items.map((item, itemIndex) => <li key={itemIndex}>{renderInlineMarkdown(item)}</li>)}</List>);
+      continue;
+    }
+
+    const paragraph: string[] = [];
+    while (index < lines.length && lines[index].trim() && !/^\d+\.\s+/.test(lines[index]) && !/^[-*]\s+/.test(lines[index])) {
+      paragraph.push(lines[index]);
+      index += 1;
+    }
+    blocks.push(<p key={`paragraph-${index}`} className="mb-2 last:mb-0">{paragraph.map((line, lineIndex) => <Fragment key={lineIndex}>{lineIndex > 0 && <br />}{renderInlineMarkdown(line)}</Fragment>)}</p>);
+  }
+
+  return <>{blocks}</>;
+}
+
+/** Render escaped inline bold spans from a trusted text-only assistant response. */
+function renderInlineMarkdown(value: string): ReactNode[] {
+  return value.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, index) => (
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={index} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
+      : <Fragment key={index}>{part}</Fragment>
+  ));
+}
+
 interface ConversationItem {
   question: string;
   answer: string;
   tools: string[];
+  sources: AISource[];
 }
 
 /** Render the authenticated, read-only Whitfield AI chat drawer. */
@@ -36,7 +96,7 @@ export function AssistantDrawer() {
   const chat = useMutation({
     mutationFn: (question: string) => aiApi.chat({ message: question, active_warehouse_id: scopeId === "ALL" ? undefined : scopeId }),
     onSuccess: (response, question) => {
-      setConversation((items) => [...items, { question, answer: response.answer, tools: response.tool_calls }]);
+      setConversation((items) => [...items, { question, answer: response.answer, tools: response.tool_calls, sources: response.sources }]);
       setMessage("");
     },
     onError: (error) => {
@@ -87,8 +147,15 @@ export function AssistantDrawer() {
               {conversation.map((item, index) => (
                 <div key={`${item.question}-${index}`} className="space-y-2">
                   <div className="ml-8 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">{item.question}</div>
-                  <div className="mr-4 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm leading-6 whitespace-pre-wrap">{item.answer}</div>
-                  {item.tools.length > 0 && <p className="text-xs text-muted-foreground">Live data: {item.tools.join(", ")}</p>}
+                  <div className="mr-4 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm leading-6"><AssistantMarkdown content={item.answer} /></div>
+                  {item.tools.filter((tool) => LIVE_DATA_TOOLS.has(tool)).length > 0 && <p className="text-xs text-muted-foreground">Live data: {item.tools.filter((tool) => LIVE_DATA_TOOLS.has(tool)).join(", ")}</p>}
+                  {item.tools.includes("search_sop") && <p className="text-xs text-muted-foreground">Knowledge: Whitfield SOP</p>}
+                  {item.sources.length > 0 && (
+                    <div className="mr-4 border-l-2 border-primary/40 pl-3 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">Sources</p>
+                      {item.sources.map((source) => <p key={`${source.source}-${source.section}`}>{source.title} - {source.section}</p>)}
+                    </div>
+                  )}
                 </div>
               ))}
               {chat.isPending && <div className="mr-4 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-muted-foreground">Checking live warehouse data...</div>}

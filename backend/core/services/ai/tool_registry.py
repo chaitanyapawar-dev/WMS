@@ -21,6 +21,7 @@ from core.controllers.warehouse_controller import WarehouseController
 from core.cruds.seller_crud import CRUDSeller
 from core.cruds.warehouse_crud import CRUDWarehouse
 from core.models.user_model import User, UserRole
+from core.services.ai.rag.retriever import get_sop_retriever
 
 logging = logger(__name__)
 MAX_RESULTS = 20
@@ -96,6 +97,12 @@ class ActivityToolInput(BaseModel):
     reference: Optional[str] = Field(None, max_length=64)
 
 
+class SOPSearchToolInput(BaseModel):
+    """Validate a bounded SOP or warehouse-policy question."""
+
+    query: str = Field(..., min_length=1, max_length=500)
+
+
 ToolHandler = Callable[[ToolContext, BaseModel], Awaitable[dict[str, Any]]]
 
 
@@ -130,6 +137,7 @@ class ToolRegistry:
             "list_orders": ApprovedTool("list_orders", "List authorized order and fulfillment records with optional filters.", OrderToolInput, self.list_orders, all_roles),
             "get_operational_summary": ApprovedTool("get_operational_summary", "Compute live inventory, receipt, and order metrics for an authorized warehouse.", SummaryToolInput, self.get_operational_summary, all_roles),
             "get_recent_activity": ApprovedTool("get_recent_activity", "List authorized recent operational audit activity.", ActivityToolInput, self.get_recent_activity, (UserRole.OWNER, UserRole.MANAGER)),
+            "search_sop": ApprovedTool("search_sop", "Search approved Whitfield warehouse SOPs and policies for procedure guidance.", SOPSearchToolInput, self.search_sop, all_roles),
         }
 
     def definitions(self) -> list[dict[str, Any]]:
@@ -367,3 +375,49 @@ class ToolRegistry:
         audits = await InventoryController().list_audits(warehouse_id=warehouse["id"] if warehouse else None, user_id=None, action=None, entity_type=None, entity_id=payload.reference, current_user=context.current_user)
         records = sorted(audits, key=lambda item: item.created_at, reverse=True)[:MAX_ACTIVITY_RESULTS]
         return {"records": [{"action": item.action, "entity_type": item.entity_type, "entity_id": item.entity_id, "warehouse_id": item.warehouse_id, "created_at": item.created_at.isoformat()} for item in records], "count": len(records), "limited": len(audits) > MAX_ACTIVITY_RESULTS}
+
+    async def search_sop(self, context: ToolContext, payload: SOPSearchToolInput) -> dict[str, Any]:
+        """Retrieve approved SOP evidence without accepting model-supplied authority.
+
+        Args:
+            context: Trusted authenticated user context used only for traceability.
+            payload: Validated natural-language SOP query.
+
+        Returns:
+            dict[str, Any]: Bounded SOP passages and safe citation metadata.
+        """
+        logging.info(f"Executing ToolRegistry.search_sop request={context.request_id}")
+        retrieval = get_sop_retriever().retrieve(payload.query)
+        if not retrieval.found:
+            return {"found": False, "matches": [], "sources": []}
+
+        matches = [
+            {
+                "content": item["content"],
+                "title": item["title"],
+                "source": item["source"],
+                "section": item["section"],
+            }
+            for item in retrieval.matches
+        ]
+        sources = _unique_sop_sources(matches)
+        return {"found": True, "matches": matches, "sources": sources}
+
+
+def _unique_sop_sources(matches: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Return deterministic, safe SOP citations without duplicate sections.
+
+    Args:
+        matches: Retrieved approved SOP passages.
+
+    Returns:
+        list[dict[str, str]]: Unique title, filename, and section citations.
+    """
+    sources: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in matches:
+        key = (item["source"], item["section"])
+        if key not in seen:
+            sources.append({"title": item["title"], "source": item["source"], "section": item["section"]})
+            seen.add(key)
+    return sources
