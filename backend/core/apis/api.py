@@ -97,13 +97,8 @@ async def add_security_headers(request, call_next):
     Returns:
         Response: HTTP response with security headers applied.
     """
-    # Step 2:
-    # Let the request continue to the actual route or next middleware first.
     response = await call_next(request)
 
-    # Step 3:
-    # Add security-related response headers.
-    # These headers help reduce common browser-based attacks.
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -113,20 +108,6 @@ async def add_security_headers(request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self)"
     response.headers["Cache-Control"] = "no-store"
     response.headers["Server"] = "Custom Server"
-
-    method = request.method
-
-    # Step 4:
-    # Set an explicit allowed method header based on the current request method.
-    # This is included here as a simple learning example.
-    if method == "GET":
-        response.headers["Access-Control-Allow-Methods"] = "GET"
-    elif method == "POST":
-        response.headers["Access-Control-Allow-Methods"] = "POST"
-    elif method == "PUT":
-        response.headers["Access-Control-Allow-Methods"] = "PUT"
-    elif method == "DELETE":
-        response.headers["Access-Control-Allow-Methods"] = "DELETE"
 
     return response
 
@@ -139,9 +120,6 @@ def set_cookie(response: Response):
     Args:
         response: FastAPI response object used to attach the cookie.
     """
-    # Step 5:
-    # Example endpoint showing how to set a secure cookie.
-    # This is useful for teaching cookie flags like httponly, secure, and samesite.
     response.set_cookie(
         key="session",
         value="value",
@@ -152,17 +130,14 @@ def set_cookie(response: Response):
     )
 
 
-origins = ["*"]
-
-# Step 6:
-# Add CORS middleware so browsers can access this API from frontend apps.
-# For a tutorial, "*" keeps the setup simple and easy to test.
+# Configure robust CORS middleware for cross-origin requests from Vercel & local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=r"^https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 

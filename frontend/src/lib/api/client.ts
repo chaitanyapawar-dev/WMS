@@ -1,7 +1,9 @@
+
 import axios, { AxiosError } from "axios";
 
+const rawBaseUrl = (import.meta.env["VITE_API_BASE_URL"] as string | undefined) ?? "";
 /** Base URL for the live Whitfield FastAPI service. */
-export const API_BASE_URL = (import.meta.env["VITE_API_BASE_URL"] as string | undefined) ?? "";
+export const API_BASE_URL = rawBaseUrl.trim().replace(/\/+$/, "");
 export const LIVE_API = API_BASE_URL.length > 0;
 
 export const TOKEN_KEY = "whitfield.token";
