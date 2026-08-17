@@ -59,7 +59,11 @@ class _MongoClientSingleton:
             mongodb_uri = MONGODB_URL
             database_name = DATABASE_NAME
 
-            client_kwargs = {"driver": DRIVER_INFO}
+            client_kwargs = {
+                "driver": DRIVER_INFO,
+                "serverSelectionTimeoutMS": 5000,
+                "connectTimeoutMS": 5000,
+            }
             try:
                 import certifi
                 if "mongodb+srv://" in mongodb_uri or "tls=true" in mongodb_uri.lower():
