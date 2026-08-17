@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 DRIVER_INFO = DriverInfo(name="fastapi-tutorial", version="0.1.0")
 
 # Read the MongoDB settings once from environment variables.
-# These values are then reused throughout this file.
 MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "WMS")
 
@@ -54,38 +53,28 @@ class _MongoClientSingleton:
         Returns:
             _MongoClientSingleton: Shared Mongo client and ODMantic engine holder.
         """
-        # Step 1:
-        # Check whether we already created the singleton instance earlier.
-        # If it already exists, we reuse it instead of creating a new connection.
         if not hasattr(cls, "instance"):
-            # Step 2:
-            # Create the singleton object for the first time.
             cls.instance = super(_MongoClientSingleton, cls).__new__(cls)
 
-            # Keep the tutorial simple: one connection string and one database name.
             mongodb_uri = MONGODB_URL
             database_name = DATABASE_NAME
 
-            # Step 3:
-            # Create the async MongoDB client.
-            # Motor manages the connection pool for us under the hood.
-            cls.instance.mongo_client = motor_asyncio.AsyncIOMotorClient(
-                mongodb_uri, driver=DRIVER_INFO
-            )
+            client_kwargs = {"driver": DRIVER_INFO}
+            try:
+                import certifi
+                if "mongodb+srv://" in mongodb_uri or "tls=true" in mongodb_uri.lower():
+                    client_kwargs["tlsCAFile"] = certifi.where()
+            except ImportError:
+                pass
 
-            # Step 4:
-            # Wrap the Motor client with ODMantic's engine.
-            # This is what the CRUD layer uses for model-based queries.
+            cls.instance.mongo_client = motor_asyncio.AsyncIOMotorClient(
+                mongodb_uri, **client_kwargs
+            )
             cls.instance.engine = AIOEngine(
                 client=cls.instance.mongo_client, database=database_name
             )
-
-            # Step 5:
-            # Log the database name so developers can confirm the connection target.
             logger.info(f"MongoDB singleton initialised | DB: {database_name}")
 
-        # Step 6:
-        # Always return the same singleton instance.
         return cls.instance
 
 
@@ -94,8 +83,6 @@ def MongoDatabase() -> core.AgnosticDatabase:
     Return the raw Motor database object.
     Use this when you need to run raw MongoDB queries (aggregations, etc.).
     """
-    # Step 1: get the singleton client.
-    # Step 2: select the configured database from that client.
     return _MongoClientSingleton().mongo_client[DATABASE_NAME]
 
 
@@ -105,14 +92,11 @@ def get_engine() -> AIOEngine:
     CRUD classes import this function directly so the router and controller
     layers do not need to receive a database dependency.
     """
-    # Return the ODMantic engine stored inside the singleton.
     return _MongoClientSingleton().engine
 
 
 async def ping():
     """Verify the MongoDB connection is alive."""
-    # Run MongoDB's built-in ping command.
-    # If this fails, the application should treat the database as unavailable.
     await MongoDatabase().command("ping")
     logger.info("MongoDB ping successful")
 
